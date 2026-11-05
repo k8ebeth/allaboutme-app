@@ -24,6 +24,25 @@ create table public.day_photos (
   created_at timestamptz not null default now()
 );
 
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, name)
+  values (
+    new.id,
+    coalesce(nullif(new.raw_user_meta_data->>'full_name', ''), 'My baby diary')
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created_profile
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user_profile();
+
 alter table public.profiles enable row level security;
 alter table public.day_entries enable row level security;
 alter table public.day_photos enable row level security;

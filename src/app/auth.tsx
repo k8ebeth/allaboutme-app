@@ -53,6 +53,23 @@ export default function AuthScreen() {
     router.replace('/');
   };
 
+  const resetPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Enter your email', 'Add your email address first so we know where to send the reset link.');
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      Alert.alert('Supabase is not configured', 'Add your Supabase environment variables before requesting a password reset.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) {
+      Alert.alert('Could not send reset email', error.message);
+      return;
+    }
+    Alert.alert('Check your email', 'We sent a password reset link to your email address.');
+  };
+
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -82,7 +99,7 @@ export default function AuthScreen() {
               <View style={styles.formCard}>
                 {mode === 'signup' && <View style={styles.field}><ThemedText style={styles.label}>NAME</ThemedText><TextInput value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={colors.muted} autoCapitalize="words" style={styles.input} /></View>}
                 <View style={styles.field}><ThemedText style={styles.label}>EMAIL</ThemedText><TextInput value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} style={styles.input} /></View>
-                <View style={styles.field}><ThemedText style={styles.label}>PASSWORD</ThemedText><TextInput value={password} onChangeText={setPassword} placeholder="At least 8 characters" placeholderTextColor={colors.muted} secureTextEntry style={styles.input} /></View>
+                <View style={styles.field}><ThemedText style={styles.label}>PASSWORD</ThemedText><TextInput value={password} onChangeText={setPassword} placeholder="At least 8 characters" placeholderTextColor={colors.muted} secureTextEntry style={styles.input} />{mode === 'login' && <Pressable onPress={resetPassword} style={styles.forgotButton}><ThemedText style={styles.forgotText}>Forgot password?</ThemedText></Pressable>}</View>
                 <Pressable onPress={submit} style={styles.submitButton}><ThemedText style={styles.submitText}>{mode === 'signup' ? 'Create account' : 'Log in'}</ThemedText><ThemedText style={styles.submitArrow}>→</ThemedText></Pressable>
                 <ThemedText style={styles.privacyText}>Your private diary keeps notes, milestones, and photos together as your baby grows.</ThemedText>
               </View>
@@ -126,6 +143,8 @@ const styles = StyleSheet.create({
   field: { marginBottom: 18 },
   label: { color: colors.coral, fontSize: 10, fontWeight: '800', letterSpacing: 1.4, marginBottom: 7 },
   input: { borderWidth: 1, borderColor: colors.line, borderRadius: 10, color: colors.ink, fontSize: 16, paddingHorizontal: 13, paddingVertical: 12, backgroundColor: '#fbfaf5' },
+  forgotButton: { alignSelf: 'flex-end', paddingTop: 9 },
+  forgotText: { color: colors.moss, fontSize: 12, fontWeight: '800' },
   submitButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.moss, borderRadius: 10, paddingVertical: 14, marginTop: 4 },
   submitText: { color: '#fffdf8', fontSize: 15, fontWeight: '800' },
   submitArrow: { color: '#fffdf8', fontSize: 19, lineHeight: 19 },
