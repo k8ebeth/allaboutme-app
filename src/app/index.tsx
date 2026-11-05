@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { setActiveProfileName } from '@/hooks/use-active-profile-name';
 
 type ViewMode = 'month' | 'day' | 'year';
 type DayEntry = { note: string; photos: string[] };
@@ -54,6 +55,10 @@ export default function HomeScreen() {
     if (profilesLoaded) AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
   }, [profiles, profilesLoaded]);
 
+  useEffect(() => {
+    setActiveProfileName(activeProfile.name);
+  }, [activeProfile.name]);
+
   const updateActiveProfile = (update: (profile: Profile) => Profile) => {
     setProfiles((current) => current.map((profile) => profile.id === activeProfile.id ? update(profile) : profile));
   };
@@ -85,7 +90,7 @@ export default function HomeScreen() {
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}><View style={styles.headerCopy}><ThemedText style={styles.eyebrow}>YOUR LITTLE ARCHIVE</ThemedText><TextInput value={activeProfile.name} onChangeText={setProfileName} placeholder="Add name" placeholderTextColor={colors.ink} style={styles.titleInput} /></View><View style={styles.avatar}><ThemedText style={styles.avatarText}>AM</ThemedText></View></View>
+          <View style={styles.header}><View style={styles.headerCopy}><ThemedText style={styles.eyebrow}>ALL YOUR PRECIOUS MEMORIES</ThemedText><TextInput value={activeProfile.name} onChangeText={setProfileName} placeholder="Add name" placeholderTextColor={colors.ink} style={styles.titleInput} /></View><View style={styles.avatar}><ThemedText style={styles.avatarText}>AM</ThemedText></View></View>
           <View style={styles.profileRow}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.profileList}>{profiles.map((profile) => <Pressable key={profile.id} onPress={() => setActiveProfileId(profile.id)} style={[styles.profileChip, profile.id === activeProfile.id && styles.profileChipActive]}><ThemedText style={[styles.profileChipText, profile.id === activeProfile.id && styles.profileChipTextActive]}>{profile.name || 'Unnamed'}</ThemedText></Pressable>)}</ScrollView><Pressable onPress={() => setProfileModalVisible(true)} style={styles.newProfileButton}><ThemedText style={styles.newProfileText}>＋</ThemedText></Pressable></View>
           <Modal visible={profileModalVisible} transparent animationType="fade" onRequestClose={() => setProfileModalVisible(false)}><View style={styles.modalBackdrop}><View style={styles.modalCard}><ThemedText style={styles.modalTitle}>New profile</ThemedText><ThemedText style={styles.modalCaption}>Create a separate space for another person or chapter.</ThemedText><TextInput autoFocus value={newProfileName} onChangeText={setNewProfileName} placeholder="Profile name" placeholderTextColor={colors.muted} style={styles.profileInput} /><View style={styles.modalActions}><Pressable onPress={() => setProfileModalVisible(false)} style={styles.cancelButton}><ThemedText style={styles.cancelText}>Cancel</ThemedText></Pressable><Pressable onPress={addProfile} style={styles.createButton}><ThemedText style={styles.createText}>Create</ThemedText></Pressable></View></View></View></Modal>
           <View style={styles.modeSwitch}>{(['month', 'day', 'year'] as ViewMode[]).map((item) => <Pressable key={item} onPress={() => setMode(item)} style={[styles.modeButton, mode === item && styles.modeButtonActive]}><ThemedText style={[styles.modeText, mode === item && styles.modeTextActive]}>{item[0].toUpperCase() + item.slice(1)}</ThemedText></Pressable>)}</View>
