@@ -44,8 +44,12 @@ export async function loadCloudProfiles(): Promise<DiaryProfile[]> {
 }
 
 export async function saveCloudProfile(profile: DiaryProfile) {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw userError ?? new Error('You must be logged in to save a profile.');
+
   const { error } = await supabase.from('profiles').upsert({
     id: profile.id,
+    user_id: userData.user.id,
     name: profile.name,
     highlight_color: profile.highlightColor,
   });

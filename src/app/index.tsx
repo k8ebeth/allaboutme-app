@@ -63,13 +63,30 @@ export default function HomeScreen() {
         if (loadedProfiles.length) {
           setProfiles(loadedProfiles.map((profile) => ({ ...profile, highlightColor: profile.highlightColor || colors.coral })));
           setActiveProfileId(loadedProfiles[0].id);
+        } else if (isSupabaseConfigured) {
+          const initialProfile = { id: makeProfileId(), name: 'My baby diary', highlightColor: colors.coral, entries: {} };
+          setProfiles([initialProfile]);
+          setActiveProfileId(initialProfile.id);
         }
         setCloudReady(true);
         setProfilesLoaded(true);
-      } catch {
+      } catch (error) {
         setCloudReady(false);
         setProfilesLoaded(true);
-        if (isSupabaseConfigured) Alert.alert('Database setup needed', 'Run the migration in supabase/migrations/0001_initial_schema.sql from the Supabase SQL Editor, then restart the app.');
+        if (isSupabaseConfigured) {
+          const supabaseError = typeof error === 'object' && error !== null
+            ? error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown }
+            : null;
+          const message = [
+            supabaseError?.message,
+            supabaseError?.details,
+            supabaseError?.hint,
+            supabaseError?.code ? `Code: ${String(supabaseError.code)}` : null,
+          ].filter((part): part is string => typeof part === 'string' && part.length > 0).join('\n')
+            || (error instanceof Error ? error.message : String(error));
+          console.error('Failed to load profiles from Supabase:', error);
+          Alert.alert('Could not load profiles', message);
+        }
       }
     };
     void loadProfiles();
@@ -78,7 +95,9 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!profilesLoaded) return;
     if (isSupabaseConfigured && cloudReady) {
-      void Promise.all(profiles.map((profile) => saveCloudProfile(profile)));
+      void Promise.all(profiles.map((profile) => saveCloudProfile(profile))).catch((error) => {
+        console.error('Failed to save profiles to Supabase:', error);
+      });
     } else {
       void AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
     }

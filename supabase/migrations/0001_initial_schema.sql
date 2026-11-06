@@ -47,6 +47,11 @@ alter table public.profiles enable row level security;
 alter table public.day_entries enable row level security;
 alter table public.day_photos enable row level security;
 
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.day_entries to authenticated;
+grant select, insert, delete on public.day_photos to authenticated;
+
 create policy "Users can view their own profiles" on public.profiles
   for select using ((select auth.uid()) = user_id);
 create policy "Users can create their own profiles" on public.profiles
