@@ -48,6 +48,7 @@ export default function HomeScreen() {
   const [editProfileColor, setEditProfileColor] = useState(highlightColors[0]);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
+  const [cloudReady, setCloudReady] = useState(!isSupabaseConfigured);
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0];
   const selectedEntry = activeProfile.entries[dateKey(selectedDate)] ?? { note: '', photos: [] };
   const activeHighlightColor = activeProfile.highlightColor || colors.coral;
@@ -63,9 +64,12 @@ export default function HomeScreen() {
           setProfiles(loadedProfiles.map((profile) => ({ ...profile, highlightColor: profile.highlightColor || colors.coral })));
           setActiveProfileId(loadedProfiles[0].id);
         }
+        setCloudReady(true);
         setProfilesLoaded(true);
       } catch {
-        setProfilesLoaded(false);
+        setCloudReady(false);
+        setProfilesLoaded(true);
+        if (isSupabaseConfigured) Alert.alert('Database setup needed', 'Run the migration in supabase/migrations/0001_initial_schema.sql from the Supabase SQL Editor, then restart the app.');
       }
     };
     void loadProfiles();
@@ -73,12 +77,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!profilesLoaded) return;
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && cloudReady) {
       void Promise.all(profiles.map((profile) => saveCloudProfile(profile)));
     } else {
       void AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
     }
-  }, [profiles, profilesLoaded]);
+  }, [profiles, profilesLoaded, cloudReady]);
 
   useEffect(() => {
     setActiveProfileName(activeProfile.name);
@@ -95,7 +99,7 @@ export default function HomeScreen() {
     if (!name) return;
     const profile = { id: makeProfileId(), name, highlightColor: newProfileColor, entries: {} };
     setProfiles((current) => [...current, profile]);
-    if (isSupabaseConfigured) void saveCloudProfile(profile);
+    if (isSupabaseConfigured && cloudReady) void saveCloudProfile(profile);
     setActiveProfileId(profile.id);
     setNewProfileName('');
     setNewProfileColor(highlightColors[0]);
@@ -111,7 +115,7 @@ export default function HomeScreen() {
     if (!editingProfileId) return;
     const updatedProfile = { ...activeProfile, name: editProfileName.trim(), highlightColor: editProfileColor };
     setProfiles((current) => current.map((profile) => profile.id === editingProfileId ? updatedProfile : profile));
-    if (isSupabaseConfigured) void saveCloudProfile(updatedProfile);
+    if (isSupabaseConfigured && cloudReady) void saveCloudProfile(updatedProfile);
     setEditProfileModalVisible(false);
   };
   const deleteProfile = () => {
@@ -123,7 +127,7 @@ export default function HomeScreen() {
     const profileToDelete = profiles.find((profile) => profile.id === editingProfileId);
     Alert.alert('Delete profile?', `Are you sure you want to delete ${profileToDelete?.name || 'this profile'}? Its notes and photos will be removed.`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { if (isSupabaseConfigured) void deleteCloudProfile(editingProfileId); setProfiles((current) => current.filter((profile) => profile.id !== editingProfileId)); if (activeProfileId === editingProfileId) setActiveProfileId(profiles.find((profile) => profile.id !== editingProfileId)?.id || ''); setEditProfileModalVisible(false); } },
+      { text: 'Delete', style: 'destructive', onPress: () => { if (isSupabaseConfigured && cloudReady) void deleteCloudProfile(editingProfileId); setProfiles((current) => current.filter((profile) => profile.id !== editingProfileId)); if (activeProfileId === editingProfileId) setActiveProfileId(profiles.find((profile) => profile.id !== editingProfileId)?.id || ''); setEditProfileModalVisible(false); } },
     ]);
   };
   const logOut = async () => {
@@ -133,14 +137,14 @@ export default function HomeScreen() {
   const setNote = (note: string) => {
     const entry = { ...selectedEntry, note };
     updateActiveProfile((profile) => ({ ...profile, entries: { ...profile.entries, [dateKey(selectedDate)]: entry } }));
-    if (isSupabaseConfigured) void saveCloudEntry(activeProfile.id, dateKey(selectedDate), entry);
+    if (isSupabaseConfigured && cloudReady) void saveCloudEntry(activeProfile.id, dateKey(selectedDate), entry);
   };
   const choosePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) { Alert.alert('Photo access needed', 'Allow photo access to add memories to this day.'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, quality: 0.9 });
     if (!result.canceled) {
-      const newPhotos = isSupabaseConfigured
+      const newPhotos = isSupabaseConfigured && cloudReady
         ? await Promise.all(result.assets.map((asset) => uploadCloudPhoto(activeProfile.id, dateKey(selectedDate), asset.uri, selectedEntry.note, asset.mimeType)))
         : result.assets.map((asset) => asset.uri);
       updateActiveProfile((profile) => ({ ...profile, entries: { ...profile.entries, [dateKey(selectedDate)]: { ...selectedEntry, photos: [...selectedEntry.photos, ...newPhotos] } } }));
